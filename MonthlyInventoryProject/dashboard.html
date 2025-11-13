@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Monthly Inventory</title>
+<style>
+body {
+    background:#000; color:#57B6FF; font-family:Helvetica; text-align:center; padding:30px;
+}
+.container { max-width:700px; margin:auto; background:#1a1a1a; padding:20px; border-radius:8px; }
+a.button {
+    color:#57B6FF; text-decoration:none; font-size:20px; display:block; margin:15px 0; padding:10px;
+    border:1px solid #57B6FF; border-radius:4px; transition:0.3s;
+}
+a.button:hover { background:#3a8edc; color:white; }
+img.logo { max-width:200px; margin-bottom:20px; }
+h1 { margin-bottom:30px; }
+
+#skuModal {
+    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.95); color:#57B6FF; text-align:center; padding:20px; overflow:auto;
+}
+
+/* Enable horizontal scrolling for large tables */
+#skuList {
+    overflow-x:auto;
+    padding-bottom: 10px;
+}
+
+/* Autofit table styling */
+.skuTable {
+    border-collapse: collapse;
+    margin:auto;
+    width: max-content;        /* Shrink-wrap to content */
+    table-layout: auto;        /* Let columns size naturally */
+    max-width: 100%;           /* Prevent it from overflowing */
+}
+
+.skuTable th, .skuTable td {
+    border:1px solid #57B6FF;
+    padding:5px 10px;
+    font-size:16px;
+    text-align:center;
+    white-space:nowrap;
+}
+
+.skuTable th {
+    position: sticky;
+    top:0;
+    background:#1a1a1a;
+}
+
+/* Make the first column (SKU) wider and left-aligned */
+.skuTable th:nth-child(1),
+.skuTable td:nth-child(1) {
+    width: 250px;
+    text-align: left;
+}
+
+/* Keep numeric columns compact */
+.skuTable th:not(:first-child),
+.skuTable td:not(:first-child) {
+    width: 80px;
+    text-align: center;
+}
+
+/* Input fields */
+input.skuInput {
+    width:60px; padding:5px; border-radius:4px; border:1px solid #57B6FF;
+    background:#000; color:#57B6FF; text-align:center;
+}
+
+button {
+    padding:10px 20px; font-size:18px; margin:10px;
+    border:1px solid #57B6FF; border-radius:4px;
+    background:#000; color:#57B6FF; cursor:pointer; transition:0.3s;
+}
+button:hover { background:#3a8edc; color:white; }
+
+h3 { margin-top:20px; margin-bottom:5px; }
+
+.clearButton {
+    background-color: #b33a3a;
+    border-color: #b33a3a;
+    color: white;
+}
+.clearButton:hover {
+    background-color: #d94c4c;
+    color: white;
+}
+</style>
+</head>
+<body>
+<img src="static/footscientificlogo.png" alt="Logo" class="logo">
+<div class="container">
+<h1>Inventory Update Dashboard</h1>
+<a class="button" href="#" onclick="openSKU('arches')">Arches Orthotics</a>
+<a class="button" href="#" onclick="openSKU('military')">Military Orthotics</a>
+<a class="button" href="#" onclick="openSKU('elevate')">Elevate</a>
+<a class="button" href="#" onclick="openSKU('accessories')">Accessories</a>
+<a class="button" href="#" onclick="openSKU('socks')">Compression Socks</a>
+<a class="button" href="#" onclick="openSKU('office')">Office Supplies</a>
+
+<!-- Page selection checkboxes -->
+<br>
+<h3>Select Pages to Export:</h3>
+<div id="pageSelectors" style="text-align:center; margin:10px 0;">
+    <button onclick="toggleSelectAll()" style="margin-bottom:10px;">Select/Deselect All</button><br>
+    <label><input type="checkbox" class="page-selector" value="arches" checked> Arches Orthotics</label><br>
+    <label><input type="checkbox" class="page-selector" value="military" checked> Military Orthotics</label><br>
+    <label><input type="checkbox" class="page-selector" value="elevate" checked> Elevate</label><br>
+    <label><input type="checkbox" class="page-selector" value="accessories" checked> Accessories</label><br>
+    <label><input type="checkbox" class="page-selector" value="socks" checked> Compression Socks</label><br>
+    <label><input type="checkbox" class="page-selector" value="office" checked> Office Supplies</label>
+</div>
+<br>
+<a class="button" href="#" onclick="exportCSVSelected()">Finish & Export</a>
+<a class="button clearButton" href="#" onclick="clearAll()">Clear All</a>
+
+</div>
+
+<!-- SKU Modal -->
+<div id="skuModal">
+    <h1 id="skuTitle"></h1>
+    <div id="skuList"></div>
+    <button onclick="closeSKU()">Back to Dashboard</button>
+</div>
+
+<script>
+    function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll(".page-selector");
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    // If all are checked, uncheck all. Otherwise, check all.
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+}
+
+// Generate SKU ranges
+function generateSKU(prefix,start,end){
+    let skus=[];
+    for(let i=start;i<=end;i++){
+        skus.push(`${prefix}-${i.toString().padStart(2,'0')}`);
+    }
+    return skus;
+}
+
+// SKU definitions
+const categorySKUs={
+    arches:[
+        {group:'Type 1', skus:generateSKU('201',4,16)},
+        {group:'Type 2', skus:generateSKU('202',4,16)},
+        {group:'Type 3', skus:generateSKU('203',4,16)}
+    ],
+    military:[
+        {group:'Military Type 1', skus:generateSKU('901',4,16)},
+        {group:'Military Type 2', skus:generateSKU('902',4,16)},
+        {group:'Military Type 3', skus:generateSKU('903',4,16)}
+    ],
+    elevate:[
+        {group:'Elevate 360° (Magnetic)',skus:['100-60']},
+        {group:'Elevate 360° (Buckled)', skus:['101-60']},
+        {group:'Child Elevate 360° ', skus:['103-01']}
+    ],
+    accessories:[
+        {group:'Elevate 360° Accessories',skus:['Lace Replacement','Anchor Kit - Black','Anchor Kit - Silver','Comfort Pads','Crop a Dile (Small)','Crop a Dile (Big)','Child Lace','Lace witout Instructions','Type 1 Wedges','Type 3 Wedges']}
+    ],
+    socks:[
+        {group:'Comfort',skus:['301-S','301-M','301-L','301-XL']},
+        {group:'Performance', skus:['302-S','302-M','302-L','301-XL']},
+        {group:'Recovery', skus:['303-S','303-M','303-L','303-XL']}
+    ],
+    office:[
+        {group:'OFF',skus:[
+            'Duct Tape (Black Army)','Sealing Tape (Circle)','Shipping Tape','Side Tape Dispenser 2 IN',
+            'Zebra Thermal Labels','FS Hand Sanitizer','Utility Knifes','Knife Blades 61mm',
+            'Clear Adhesive Envelope','Shipping Paper','Stretch Wrap','FS Business Cards',
+            'Arches Cards - Website','Arches Cards - Amazon','Elevate Cards - Website',
+            'Elevate Cards - Amazon','Discount Cards - Arches','Italian instructions  Child',
+            'Italian instructions  Adult','Italian instructions  Lace','CE Mark Tags  Child',
+            'CE Mark Tags  Adult','Spain instructions Lace','Spain instructions Adult',
+            'Spain instructions  Child','Kiosk Stand Cards','Silver DEMO Hooks','Black DEMO Hooks',
+            'Sharpies (Pens Bold)','BIC Pencil','BIC Pens','Highlighters','Batteries (A AA AAA)',
+            'Scotch Tape','Staples','Sticky Notes','Envelopes','Hand Sanitizer','Journals',
+            'Labels (1x2 5/8 IN)','Labels (2x4 IN)','Labels (1/2 X ¾ IN)','3-Tab Folders',
+            '1/3 Cut Tab Folders','Copy Paper 8 1/2 X 11','Scissors','Hole puncher',
+            'Staple Removal','Tissues','Paper Towels','Bath Tissues','Febreze Spray Plug Air',
+            'Lysol Click Gel','Lysol Disinfectant Stray','Hand Soap filler','Clorox Wipes',
+            'Clorox toilet cleaner','Trash Bags 13 33 Gallon Bundles','Clorox Bleach spray filler',
+            'Broom','Swiffer pads','Swiffer refill','Windex'
+        ]}
+    ]
+};
+
+// Initialize counts
+let inventoryCounts=JSON.parse(localStorage.getItem('inventoryCounts'))||{};
+for(let cat in categorySKUs){
+    if(!inventoryCounts[cat]) inventoryCounts[cat]={};
+    categorySKUs[cat].forEach(groupObj=>{
+        groupObj.skus.forEach(sku=>{
+            if(!inventoryCounts[cat][sku]){
+                inventoryCounts[cat][sku]={shelved:0,boxed:0,miscount:0};
+            }
+        });
+    });
+}
+
+let currentCategory='';
+
+// Open SKU modal
+function openSKU(category){
+    currentCategory=category;
+    document.getElementById('skuTitle').innerText=category.charAt(0).toUpperCase()+category.slice(1);
+    const listDiv=document.getElementById('skuList');
+    listDiv.innerHTML='';
+
+    categorySKUs[category].forEach(groupObj=>{
+        const groupHeader=document.createElement('h3');
+        groupHeader.innerText=`${groupObj.group}`;
+        listDiv.appendChild(groupHeader);
+
+        // Create table
+        const table=document.createElement('table');
+        table.className='skuTable';
+        const thead=document.createElement('thead');
+        thead.innerHTML='<tr><th>SKU</th><th>Shelved</th><th>Boxed</th><th>Miscount</th><th>Total</th></tr>';
+        table.appendChild(thead);
+
+        const tbody=document.createElement('tbody');
+
+        groupObj.skus.forEach(sku=>{
+            const counts=inventoryCounts[category][sku];
+            const tr=document.createElement('tr');
+            tr.innerHTML=`
+                <td>${sku}</td>
+                <td><input type="number" min="0" class="skuInput" value="${counts.shelved}" onchange="updateSKU('${sku}','shelved',this)"></td>
+                <td><input type="number" min="0" class="skuInput" value="${counts.boxed}" onchange="updateSKU('${sku}','boxed',this)"></td>
+                <td><input type="number" min="0" class="skuInput" value="${counts.miscount}" onchange="updateSKU('${sku}','miscount',this)"></td>
+                <td class="totalCell">${counts.shelved+counts.boxed+counts.miscount}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        listDiv.appendChild(table);
+    });
+
+    document.getElementById('skuModal').style.display='block';
+}
+
+// Update SKU
+function updateSKU(sku,type,input){
+    const value=parseInt(input.value)||0;
+    inventoryCounts[currentCategory][sku][type]=value;
+    saveCounts();
+
+    const tr=input.parentElement.parentElement;
+    const counts=inventoryCounts[currentCategory][sku];
+    tr.querySelector('.totalCell').innerText=counts.shelved+counts.boxed+counts.miscount;
+}
+
+// Save counts
+function saveCounts(){
+    localStorage.setItem('inventoryCounts',JSON.stringify(inventoryCounts));
+}
+
+// Close modal
+function closeSKU(){
+    document.getElementById('skuModal').style.display='none';
+    saveCounts();
+}
+
+// Export CSV with selected pages
+function exportCSVSelected(){
+    const selectedPages = Array.from(document.querySelectorAll(".page-selector:checked"))
+                               .map(cb => cb.value);
+
+    if(selectedPages.length === 0){
+        alert("Please select at least one page to export.");
+        return;
+    }
+
+    let csv='';
+
+    selectedPages.forEach(cat => {
+        csv += `${cat.charAt(0).toUpperCase() + cat.slice(1)}\n`;
+        categorySKUs[cat].forEach(groupObj => {
+            csv += `${groupObj.group}\n`;
+            csv += 'SKU,Shelved,Boxed,Miscount,Total\n';
+            groupObj.skus.forEach(sku => {
+                const counts = inventoryCounts[cat][sku];
+                const total = counts.shelved + counts.boxed + counts.miscount;
+                csv += `${sku},${counts.shelved},${counts.boxed},${counts.miscount},${total}\n`;
+            });
+            csv += '\n';
+        });
+        csv += '\n';
+    });
+
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_counts.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+// Clear all counts
+function clearAll() {
+    if(!confirm("Are you sure you want to clear ALL inventory counts? This cannot be undone.")) return;
+
+    for(let cat in inventoryCounts){
+        for(let sku in inventoryCounts[cat]){
+            inventoryCounts[cat][sku] = {shelved:0, boxed:0, miscount:0};
+        }
+    }
+
+    localStorage.removeItem('inventoryCounts');
+
+    if(currentCategory){
+        const inputs = document.querySelectorAll('#skuModal input.skuInput');
+        inputs.forEach(input => input.value = 0);
+        const totals = document.querySelectorAll('#skuModal .totalCell');
+        totals.forEach(cell => cell.innerText = 0);
+    }
+
+    alert("All inventory counts cleared!");
+}
+</script>
+</body>
+</html>

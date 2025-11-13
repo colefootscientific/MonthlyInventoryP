@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ category_name }} Counter</title>
+<style>
+body { background:#000; color:#57B6FF; font-family:Helvetica; text-align:center; padding:30px;}
+.container { max-width:400px; margin:auto; background:#1a1a1a; padding:20px; border-radius:8px;}
+button { padding:15px 25px; font-size:20px; margin:10px; border:1px solid #57B6FF; border-radius:4px; background:#000; color:#57B6FF; cursor:pointer; transition:0.3s;}
+button:hover { background:#3a8edc; color:white;}
+.count { font-size:40px; margin:20px 0;}
+a.button { color:#57B6FF; text-decoration:none; padding:10px; border:1px solid #57B6FF; border-radius:4px; display:block; margin:15px auto; width:50%; transition:0.3s;}
+a.button:hover { background:#3a8edc; color:white;}
+h1 { margin-bottom:30px;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>{{ category_name }}</h1>
+<div class="count" id="count">{{ current_count }}</div>
+<button onclick="increment()">+1</button>
+<button onclick="decrement()">-1</button>
+<form method="POST">
+    <input type="hidden" name="count" id="count_input" value="{{ current_count }}">
+    <button type="submit">Save Count</button>
+</form>
+<a href="{{ url_for('dashboard') }}" class="button">Back to Dashboard</a>
+</div>
+
+<script>
+let count = {{ current_count }};
+const countDiv = document.getElementById('count');
+const countInput = document.getElementById('count_input');
+
+function increment() {
+    count++;
+    countDiv.innerText = count;
+    countInput.value = count;
+}
+
+function decrement() {
+    if(count > 0) count--;
+    countDiv.innerText = count;
+    countInput.value = count;
+}
+</script>
+</body>
+</html>
